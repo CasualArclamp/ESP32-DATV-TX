@@ -4,6 +4,7 @@ use datv_tx::source::Log;
 use datv_tx::tx::Session;
 
 fn main() {
+    datv_tx::end_children_with_me();
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut c = default_config();
     c.preview = false; // no window to show it in

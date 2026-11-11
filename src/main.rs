@@ -16,7 +16,11 @@ const RATES: [u64; 7] = [33_000, 66_000, 125_000, 250_000, 333_000, 500_000, 1_0
 
 fn main() -> eframe::Result {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let mut cfg = prefs::load();
+    datv_tx::end_children_with_me();
+    // --defaults: start from the built-in settings and leave the saved ones alone (for
+    // demonstrations and screenshots)
+    let keep = !std::env::args().any(|a| a == "--defaults");
+    let mut cfg = if keep { prefs::load() } else { prefs::default_config() };
     cfg.dry_run = false; // never start on the air without it being chosen in this run
     let mut start = false;
     let rest: Vec<String> = args
@@ -24,7 +28,7 @@ fn main() -> eframe::Result {
         .filter(|a| {
             let s = a == "--start";
             start |= s;
-            !s
+            !s && a != "--defaults"
         })
         .collect();
     let mut arg_error = prefs::apply_args(&mut cfg, &rest).err();
@@ -46,6 +50,7 @@ fn main() -> eframe::Result {
         Box::new(move |cc| {
             cc.egui_ctx.set_theme(egui::Theme::Dark);
             let mut app = App::new(cfg);
+            app.keep = keep;
             if let Some(e) = arg_error {
                 app.log.push(format!("command line: {e}"));
             }
@@ -58,6 +63,8 @@ fn main() -> eframe::Result {
 }
 
 struct App {
+    /// Save the settings (not with --defaults).
+    keep: bool,
     cfg: TxConfig,
     saved: TxConfig,
     session: Option<Session>,
@@ -74,6 +81,7 @@ struct App {
 impl App {
     fn new(cfg: TxConfig) -> Self {
         let mut a = App {
+            keep: true,
             saved: cfg.clone(),
             encoders: installed_encoders(&cfg.media.ffmpeg),
             cfg,
@@ -110,7 +118,9 @@ impl App {
         self.session = None; // ends a finished one
         self.picture = None;
         self.picture_seq = 0;
-        prefs::save(&self.cfg);
+        if self.keep {
+            prefs::save(&self.cfg);
+        }
         self.saved = self.cfg.clone();
         self.log.push(if self.cfg.dry_run { "--- dry run ---" } else { "--- transmit ---" });
         self.session = Some(Session::start(self.cfg.clone(), self.log.clone()));
@@ -704,7 +714,9 @@ impl eframe::App for App {
         c.dry_run = false;
         c.seconds = 0.0;
         c.ts_out.clear();
-        prefs::save(&c);
+        if self.keep {
+            prefs::save(&c);
+        }
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {

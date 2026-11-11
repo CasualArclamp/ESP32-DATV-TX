@@ -14,6 +14,9 @@ Amateur radio use only, within the limits of your licence. The firmware transmit
 
 ![DATV TX window](docs/datv-tx.png)
 
+*A dry run (nothing transmitted): H.265 with HE-AAC sound in a 1 MS/s DVB-S2 channel. The
+picture is decoded from the stream that would go on air.*
+
 ## What you need
 
 - An ESP32-C3 with the ESP32-DATV firmware (flash it with that project's app, web flasher or ESP-IDF).
@@ -82,6 +85,21 @@ While it runs, four bars show how it is doing:
 | ESP buffer | symbols in the board's buffer; red if it has run dry (USB or the PC too slow) |
 | Room left | null packets on air in the last second, FFmpeg's and the ones added here: near 100 % means the encoder delivers nothing; red when there are none and packets pile up (the watchdog's cue) |
 
+An encoder that cannot keep up (here H.266 on Slow, encoding while transmitting) shows red;
+the cure is a faster speed, a smaller picture, or encoding the file first:
+
+![Encoder too slow](docs/too-slow.png)
+
+With **Encode the whole file first** the same settings work, because nothing is transmitted
+until the file is done:
+
+![Encoding the file first](docs/encode-first.png)
+
+The watchdog at work: NVENC asked for 1080p AV1 in 205 kb/s makes more than the channel
+carries, and the video bit rate has been lowered twice until it fits:
+
+![Watchdog](docs/watchdog.png)
+
 **Dry run** runs everything into a simulated ESP: no board is opened and nothing is
 transmitted. `datv-tx-cli` is the same engine on the command line:
 
@@ -90,6 +108,11 @@ datv-tx-cli --dry-run --seconds 10 --codec av1 --audio opus --baud 1000000 --fec
 datv-tx-cli --port COM5 --freq 2402 --baud 333000 --dvbs2 --fec 2/3 --codec hevc --film film.mp4
 datv-tx-cli --help
 ```
+
+`datv-tx --defaults ...` starts the window from the built-in settings and leaves the saved
+ones alone; with `--dry-run --start` it starts a dry run at once (the screenshots here were
+made that way). The command line cannot start a real transmission in the window: that is
+always a click on Transmit.
 
 ## Notes on the codecs
 

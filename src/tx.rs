@@ -192,7 +192,8 @@ fn run(cfg: &TxConfig, status: &Mutex<Status>, stop: &AtomicBool, log: &Log, pic
     let shared = src.shared();
     let (swap_tx, swap_rx) = channel::<TsSource>();
     let (mut last_flow, mut last_flow_nulls, mut last_under) = (0u64, 0u64, 0u8);
-    // seconds since the encoder (re)started
+    // seconds of packets since the encoder (re)started, and how many the watchdog lets pass
+    let settle = if cfg.media.source == SourceKind::Network { 15 } else { 8 };
     let mut settled = 0u32;
     let mut window: std::collections::VecDeque<(u64, u64, bool)> = Default::default();
     let (mut last_pkts, mut last_nulls) = (0u64, 0u64);
@@ -337,7 +338,11 @@ fn run(cfg: &TxConfig, status: &Mutex<Status>, stop: &AtomicBool, log: &Log, pic
             // seen over 6 seconds, the encoder is started again with 15 % less. (No null
             // packets alone is not it: a well filled multiplex has few, and at low rates they
             // come in bursts. A full buffer alone is not it either: every encoder starts so.)
-            settled += 1;
+            // (counted from when packets come: a network stream may start much later, and
+            // begins with a rush that is not the encoder's doing)
+            if dfp > 0 {
+                settled += 1;
+            }
             let piled_up = src_queued.load(Ordering::Relaxed) * 10 >= queue_cap * 9;
             window.push_back((dfp, dfn, piled_up));
             if window.len() > 6 {
@@ -346,7 +351,7 @@ fn run(cfg: &TxConfig, status: &Mutex<Status>, stop: &AtomicBool, log: &Log, pic
             let (wp, wn) = window.iter().fold((0, 0), |a, w| (a.0 + w.0, a.1 + w.1));
             s.late = window.len() == 6 && window.iter().all(|w| w.2) && wp > 0 && wn * 200 < wp;
 
-            if let (Some((media, installed, vb)), true) = (&mut live, cfg.media.watchdog && settled > 8 && s.late) {
+            if let (Some((media, installed, vb)), true) = (&mut live, cfg.media.watchdog && settled > settle && s.late) {
                 let lower = (*vb as f32 * 0.85) as u32;
                 if lower >= 6000 {
                     media.video_kbps = (lower / 1000).max(6);

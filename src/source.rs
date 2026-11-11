@@ -250,6 +250,9 @@ pub enum SourceKind {
     TsFile,
     Screen,
     Camera,
+    /// A stream from the network that FFmpeg reads (UDP, RTP, SRT, RTSP, HTTP ...) and
+    /// encodes again for the channel.
+    Network,
     /// Null packets only.
     Null,
     /// Unmodulated carrier.
@@ -257,11 +260,12 @@ pub enum SourceKind {
 }
 
 impl SourceKind {
-    pub const ALL: [SourceKind; 7] = [
+    pub const ALL: [SourceKind; 8] = [
         SourceKind::TestPattern,
         SourceKind::File,
         SourceKind::Screen,
         SourceKind::Camera,
+        SourceKind::Network,
         SourceKind::TsFile,
         SourceKind::Null,
         SourceKind::Carrier,
@@ -274,6 +278,7 @@ impl SourceKind {
             SourceKind::TsFile => "Transport stream file (.ts)",
             SourceKind::Screen => "Screen",
             SourceKind::Camera => "Camera",
+            SourceKind::Network => "Network stream (UDP ...)",
             SourceKind::Null => "Null packets (lock test)",
             SourceKind::Carrier => "Unmodulated carrier",
         }
@@ -286,6 +291,7 @@ impl SourceKind {
             SourceKind::TsFile => "ts",
             SourceKind::Screen => "screen",
             SourceKind::Camera => "camera",
+            SourceKind::Network => "net",
             SourceKind::Null => "null",
             SourceKind::Carrier => "cw",
         }
@@ -297,7 +303,10 @@ impl SourceKind {
 
     /// FFmpeg encodes this source.
     pub fn encoded(&self) -> bool {
-        matches!(self, SourceKind::TestPattern | SourceKind::File | SourceKind::Screen | SourceKind::Camera)
+        matches!(
+            self,
+            SourceKind::TestPattern | SourceKind::File | SourceKind::Screen | SourceKind::Camera | SourceKind::Network
+        )
     }
 }
 
@@ -316,6 +325,8 @@ pub struct MediaConfig {
     /// Video bit rate [kb/s]; 0 = from the channel capacity.
     pub video_kbps: u32,
     /// DirectShow device names.
+    /// Address of the network stream, as FFmpeg takes it.
+    pub url: String,
     pub camera: String,
     /// Video file: encode all of it to a transport stream before transmitting, instead of
     /// while transmitting. The encoder may then be slower than real time.
@@ -352,6 +363,7 @@ impl Default for MediaConfig {
             width: 0,
             fps: 0,
             video_kbps: 0,
+            url: "udp://127.0.0.1:1234".into(),
             camera: String::new(),
             pre_encode: false,
             watchdog: true,
@@ -528,6 +540,7 @@ pub fn encode_plan(m: &MediaConfig, capacity: f64, installed: &[String]) -> Resu
         (if mux < 40_000 { 8 } else { 16 }, 1, 16000, 10, 1.0, 160)
     };
     let fps = if m.fps > 0 { m.fps.clamp(1, 60) } else { fps };
+    // the screen and a camera have sound only with a microphone; a stream brings its own
     let live = matches!(m.source, SourceKind::Screen | SourceKind::Camera);
     let sound = m.audio != AudioCodec::Off && (!live || !m.microphone.is_empty());
     if sound && !m.audio.available(installed) {
@@ -605,6 +618,23 @@ pub fn encode_plan(m: &MediaConfig, capacity: f64, installed: &[String]) -> Resu
             } else {
                 format!("video={}", m.camera)
             });
+        }
+        SourceKind::Network => {
+            let url = m.url.trim();
+            if url.is_empty() {
+                return Err("give the address of the stream, e.g. udp://127.0.0.1:1234".into());
+            }
+            // UDP: a big receive buffer, and a full one drops data instead of ending FFmpeg
+            let url = if url.starts_with("udp://") && !url.contains('?') {
+                format!("{url}?fifo_size=100000&overrun_nonfatal=1")
+            } else {
+                url.to_string()
+            };
+            // look at the stream for a second only: what arrives meanwhile is a backlog that
+            // FFmpeg then rushes through, and the picture stays that much behind
+            a.extend(["-fflags", "nobuffer", "-analyzeduration", "1000000", "-probesize", "1000000"].map(s));
+            a.extend(["-thread_queue_size", "1024", "-i"].map(s));
+            a.push(url);
         }
         _ => return Err("this source is not encoded".into()),
     }

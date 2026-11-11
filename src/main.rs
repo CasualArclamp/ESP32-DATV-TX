@@ -270,6 +270,19 @@ impl App {
                     ui.add(egui::TextEdit::singleline(&mut m.path).hint_text("file").desired_width(f32::INFINITY));
                 });
             }
+            SourceKind::Network => {
+                ui.add(
+                    egui::TextEdit::singleline(&mut m.url)
+                        .hint_text("udp://127.0.0.1:1234")
+                        .desired_width(f32::INFINITY),
+                )
+                .on_hover_text(
+                    "Where FFmpeg reads the stream: udp://127.0.0.1:1234 listens on this PC's port 1234 \
+                     (send to it from OBS, VLC or another FFmpeg), udp://@239.0.0.1:1234 joins a multicast \
+                     group; rtp://, srt://, rtsp:// and http:// addresses work too. Picture and sound are \
+                     encoded again to fit the channel. Null packets go out until the stream arrives.",
+                );
+            }
             SourceKind::Screen | SourceKind::Camera => {
                 egui::Grid::new("dev").num_columns(2).show(ui, |ui| {
                     if m.source == SourceKind::Camera {

@@ -66,7 +66,7 @@ pub fn to_json(c: &TxConfig) -> Value {
         "codec": c.media.codec.key(), "encoder": c.media.encoder, "width": c.media.width,
         "fps": c.media.fps, "gop_s": c.media.gop_s, "pre_encode": c.media.pre_encode, "watchdog": c.media.watchdog, "vbv_s": c.media.vbv_s,
         "buffer_s": c.media.buffer_s, "bframes": c.media.bframes, "video_kbps": c.media.video_kbps, "speed": c.media.speed, "preview": c.preview, "audio": c.media.audio.key(), "audio_kbps": c.media.audio_kbps,
-        "camera": c.media.camera, "microphone": c.media.microphone,
+        "url": c.media.url, "camera": c.media.camera, "microphone": c.media.microphone,
         "service_name": c.media.service_name, "provider": c.media.provider,
     })
 }
@@ -90,6 +90,7 @@ pub fn from_json(v: &Value) -> TxConfig {
     s("ffmpeg", &mut c.media.ffmpeg);
     s("path", &mut c.media.path);
     s("encoder", &mut c.media.encoder);
+    s("url", &mut c.media.url);
     s("camera", &mut c.media.camera);
     s("microphone", &mut c.media.microphone);
     s("service_name", &mut c.media.service_name);
@@ -201,6 +202,7 @@ pub const USAGE: &str = "\
   --film FILE         encode and loop a video file
   --test              test pattern and tone (default)
   --screen            the screen
+  --url ADDRESS       a network stream FFmpeg reads and encodes again, e.g. udp://127.0.0.1:1234
   --camera NAME       a DirectShow camera
   --mic NAME          sound for --screen / --camera
   --ts FILE           loop a ready constant bit rate transport stream
@@ -280,6 +282,10 @@ pub fn apply_args(c: &mut TxConfig, args: &[String]) -> Result<(), String> {
             }
             "--test" => c.media.source = SourceKind::TestPattern,
             "--screen" => c.media.source = SourceKind::Screen,
+            "--url" => {
+                c.media.source = SourceKind::Network;
+                c.media.url = val()?;
+            }
             "--camera" => {
                 c.media.source = SourceKind::Camera;
                 c.media.camera = val()?;

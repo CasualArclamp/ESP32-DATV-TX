@@ -38,10 +38,17 @@ powershell -ExecutionPolicy Bypass -File scripts\build-portable.ps1   # exe\datv
 ```
 
 Choose the port, the signal (frequency, DVB-S or DVB-S2, modulation, symbol rate, FEC), the
-source (test pattern, video file, screen, camera, a ready `.ts`, null packets, carrier) and
+source (test pattern, video file, screen, camera, network stream, a ready `.ts`, null packets,
+carrier) and
 the codecs, then press **Transmit**. Picture size, frame rate and bit rates follow the channel
 capacity as in `tx_dvbs.py`, or set them yourself:
 
+- **Network stream**: an address FFmpeg reads, encoded again to fit the channel.
+  `udp://127.0.0.1:1234` listens on port 1234 of this PC (send to it from OBS, VLC or another
+  FFmpeg, for example `ffmpeg -re -i film.mp4 -f mpegts udp://127.0.0.1:1234`);
+  `udp://@239.0.0.1:1234` joins a multicast group; `rtp://`, `srt://`, `rtsp://` and `http://`
+  addresses work as far as your FFmpeg supports them. Null packets go out until the stream
+  arrives.
 - **Speed**: encoder effort from Fastest to Slowest. Slower gives a better picture for the
   same bit rate and needs more processor.
 - **Width** up to 1920 px (1080p) and **frame rate** up to 60 fps. The channel still carries
@@ -106,6 +113,7 @@ transmitted. `datv-tx-cli` is the same engine on the command line:
 ```sh
 datv-tx-cli --dry-run --seconds 10 --codec av1 --audio opus --baud 1000000 --fec 2/3 --ts-out on_air.ts
 datv-tx-cli --port COM5 --freq 2402 --baud 333000 --dvbs2 --fec 2/3 --codec hevc --film film.mp4
+datv-tx-cli --port COM5 --freq 2402 --baud 500000 --fec 2/3 --codec hevc --url udp://127.0.0.1:1234
 datv-tx-cli --help
 ```
 

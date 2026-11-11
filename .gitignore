@@ -1,0 +1,3 @@
+target/
+# portable builds (scripts/build-portable.ps1) and the FFmpeg beside them
+/exe/

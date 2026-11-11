@@ -1,0 +1,39 @@
+name: Release
+
+# A tag v* builds the portable exes (static C runtime, as scripts/build-portable.ps1 does)
+# and puts them in a draft release. FFmpeg is not part of it: the user installs their own.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: The tag is the version in Cargo.toml
+        shell: bash
+        run: |
+          v=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          test "v$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME, Cargo.toml $v"; exit 1; }
+      - run: cargo test --release
+      - name: Build
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
+        run: cargo build --release --target x86_64-pc-windows-msvc
+      - name: Draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd target/x86_64-pc-windows-msvc/release
+          sha256sum datv-tx.exe datv-tx-cli.exe > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+            --title "DATV TX $GITHUB_REF_NAME" --notes "" datv-tx.exe datv-tx-cli.exe SHA256SUMS.txt

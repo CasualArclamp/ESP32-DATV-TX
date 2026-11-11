@@ -460,6 +460,22 @@ pub fn parse_progress(line: &str, st: &mut EncStats) -> bool {
     true
 }
 
+/// A message of FFmpeg's that tells the user something. Left out: the banner of SVT-AV1,
+/// and what a decoder says while it joins a stream part way through and waits for the next
+/// key frame (every network stream begins so).
+fn worth_showing(line: &str) -> bool {
+    const JOINING: [&str; 7] = [
+        "non-existing PPS",
+        "non-existing SPS",
+        "no frame!",
+        "Last message repeated",
+        "decode_slice_header error",
+        "Could not find ref with POC",
+        "PPS id out of range",
+    ];
+    !line.trim().is_empty() && !line.starts_with("Svt[") && !JOINING.iter().any(|j| line.contains(j))
+}
+
 /// Takes a line of FFmpeg's stderr: true if it was a progress report. At the end of each
 /// report the speed is worked out from the video encoded since the last one (smoothed), so
 /// it shows how the encoder is doing now.
@@ -970,7 +986,7 @@ impl TsSource {
                 if track_progress(&line, &stats, &mut last) {
                     continue;
                 }
-                if !line.trim().is_empty() && !line.starts_with("Svt[") {
+                if worth_showing(&line) {
                     l.push(format!("ffmpeg: {line}"));
                 }
             }
@@ -1091,7 +1107,7 @@ pub fn pre_encode(
             if track_progress(&line, &st, &mut last) {
                 continue;
             }
-            if !line.trim().is_empty() && !line.starts_with("Svt[") {
+            if worth_showing(&line) {
                 l.push(format!("ffmpeg: {line}"));
             }
         }

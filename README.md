@@ -49,6 +49,9 @@ capacity as in `tx_dvbs.py`, or set them yourself:
   `udp://@239.0.0.1:1234` joins a multicast group; `rtp://`, `srt://`, `rtsp://` and `http://`
   addresses work as far as your FFmpeg supports them. Null packets go out until the stream
   arrives.
+
+  ![Network stream](docs/network.png)
+
 - **Speed**: encoder effort from Fastest to Slowest. Slower gives a better picture for the
   same bit rate and needs more processor.
 - **Width** up to 1920 px (1080p) and **frame rate** up to 60 fps. The channel still carries

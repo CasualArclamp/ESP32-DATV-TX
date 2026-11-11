@@ -1,6 +1,6 @@
 [package]
 name = "datv-tx"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "ESP32-DATV transmitter for Windows with a choice of video codec (H.264, HEVC, H.266, AV1); FFmpeg encodes"
 license-file = "LICENSE"

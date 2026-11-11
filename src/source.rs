@@ -464,7 +464,11 @@ pub fn parse_progress(line: &str, st: &mut EncStats) -> bool {
 /// and what a decoder says while it joins a stream part way through and waits for the next
 /// key frame (every network stream begins so).
 fn worth_showing(line: &str) -> bool {
-    const JOINING: [&str; 7] = [
+    const JOINING: [&str; 11] = [
+        "co located POCs unavailable",
+        "mmco: unref short failure",
+        "reference picture missing",
+        "Missing reference picture",
         "non-existing PPS",
         "non-existing SPS",
         "no frame!",

@@ -1,5 +1,7 @@
 # ESP32-DATV-TX
 
+[![release](https://img.shields.io/github/v/release/CasualArclamp/ESP32-DATV-TX?logo=github&label=release)](https://github.com/CasualArclamp/ESP32-DATV-TX/releases/latest) [![downloads](https://img.shields.io/github/downloads/CasualArclamp/ESP32-DATV-TX/total?logo=github&label=downloads)](https://github.com/CasualArclamp/ESP32-DATV-TX/releases)
+
 A transmitter for the ESP32-DATV firmware with a choice of video codec: **H.264, H.265 (HEVC),
 H.266 (VVC) or AV1**, and of sound codec: **MP2, MP3, AAC, HE-AAC, Opus, AC-3 or E-AC-3**. 
 

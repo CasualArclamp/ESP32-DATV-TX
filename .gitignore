@@ -1,3 +1,5 @@
 target/
 # portable builds (scripts/build-portable.ps1) and the FFmpeg beside them
 /exe/
+# Notes for Claude Code sessions: local only
+CLAUDE.md
